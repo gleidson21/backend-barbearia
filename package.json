@@ -3,13 +3,11 @@
   "version": "1.0.0",
   "description": "Backend Barbearia",
   "main": "src/server.js",
-  
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "migrate": "npx sequelize db:migrate"
+    "migrate": "sequelize db:migrate"
   },
-
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -25,10 +23,10 @@
     "pg": "^8.20.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8",
+    "sequelize-cli": "^6.6.5",
     "yup": "^1.7.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.12",
-    "sequelize-cli": "^6.6.5"
+    "@biomejs/biome": "2.4.12"
   }
 }
