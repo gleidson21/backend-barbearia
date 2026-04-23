@@ -1,5 +1,4 @@
 import * as Yup from 'yup';
-import { isBefore } from 'date-fns';
 import Appointment from '../models/Appointment.js';
 import Service from '../models/Services.js';
 import User from '../models/User.js';
@@ -15,6 +14,20 @@ function buildLocalDate(dateString) {
   const [hour, minute] = timePart.slice(0, 5).split(':').map(Number);
 
   return new Date(year, month - 1, day, hour, minute, 0, 0);
+}
+
+function formatLocalDate(dateValue) {
+  const d = dateValue instanceof Date ? dateValue : new Date(dateValue);
+
+  if (Number.isNaN(d.getTime())) {
+    return '';
+  }
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 class AppointmentController {
@@ -38,8 +51,12 @@ class AppointmentController {
       return res.status(400).json({ error: 'Data inválida.' });
     }
 
-    if (isBefore(hourStart, new Date())) {
-      return res.status(400).json({ error: 'Datas passadas não são permitidas.' });
+    const now = new Date();
+
+    if (hourStart.getTime() <= now.getTime()) {
+      return res
+        .status(400)
+        .json({ error: 'Datas passadas não são permitidas.' });
     }
 
     const appointmentExists = await Appointment.findOne({
@@ -86,12 +103,7 @@ class AppointmentController {
       });
 
       const filteredByDate = appointments.filter((appointment) => {
-        const value =
-          appointment.date instanceof Date
-            ? appointment.date.toISOString()
-            : String(appointment.date);
-
-        return value.slice(0, 10) === date;
+        return formatLocalDate(appointment.date) === date;
       });
 
       return res.json(filteredByDate);
@@ -124,7 +136,9 @@ class AppointmentController {
     const user = await User.findByPk(req.userId);
 
     if (!user.admin) {
-      return res.status(401).json({ error: 'Apenas barbeiros concluem serviços.' });
+      return res
+        .status(401)
+        .json({ error: 'Apenas barbeiros concluem serviços.' });
     }
 
     if (appointment.canceled_at) {
@@ -143,7 +157,9 @@ class AppointmentController {
     const user = await User.findByPk(req.userId);
 
     if (!appointment) {
-      return res.status(404).json({ error: 'Agendamento não encontrado.' });
+      return res
+        .status(404)
+        .json({ error: 'Agendamento não encontrado.' });
     }
 
     if (appointment.user_id !== req.userId && !user.admin) {
@@ -152,7 +168,9 @@ class AppointmentController {
 
     if (appointment.canceled_at !== null || appointment.finished_at !== null) {
       await appointment.destroy();
-      return res.json({ message: 'Registro deletado do banco de dados com sucesso.' });
+      return res.json({
+        message: 'Registro deletado do banco de dados com sucesso.',
+      });
     }
 
     appointment.canceled_at = new Date();
