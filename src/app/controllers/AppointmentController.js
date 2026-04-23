@@ -3,31 +3,37 @@ import Appointment from '../models/Appointment.js';
 import Service from '../models/Services.js';
 import User from '../models/User.js';
 
-function buildLocalDate(dateString) {
+const BARBERSHOP_UTC_OFFSET = -4; // Manaus
+
+function buildManausDate(dateString) {
   const [datePart, timePart] = String(dateString).split('T');
 
-  if (!datePart || !timePart) {
-    return null;
-  }
+  if (!datePart || !timePart) return null;
 
   const [year, month, day] = datePart.split('-').map(Number);
   const [hour, minute] = timePart.slice(0, 5).split(':').map(Number);
 
-  return new Date(year, month - 1, day, hour, minute, 0, 0);
+  // converte horário local de Manaus para UTC
+  return new Date(Date.UTC(year, month - 1, day, hour - BARBERSHOP_UTC_OFFSET, minute, 0, 0));
 }
 
-function formatLocalDate(dateValue) {
+function formatManausDate(dateValue) {
   const d = dateValue instanceof Date ? dateValue : new Date(dateValue);
 
-  if (Number.isNaN(d.getTime())) {
-    return '';
-  }
+  if (Number.isNaN(d.getTime())) return '';
 
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const local = new Date(d.getTime() + BARBERSHOP_UTC_OFFSET * 60 * 60 * 1000);
+
+  const year = local.getUTCFullYear();
+  const month = String(local.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(local.getUTCDate()).padStart(2, '0');
 
   return `${year}-${month}-${day}`;
+}
+
+function getManausNow() {
+  const now = new Date();
+  return new Date(now.getTime() + BARBERSHOP_UTC_OFFSET * 60 * 60 * 1000);
 }
 
 class AppointmentController {
@@ -45,24 +51,37 @@ class AppointmentController {
 
     const { service_id, provider_id, date, notes } = req.body;
 
-    const hourStart = buildLocalDate(date);
+    const appointmentDateUtc = buildManausDate(date);
 
-    if (!hourStart || Number.isNaN(hourStart.getTime())) {
+    if (!appointmentDateUtc || Number.isNaN(appointmentDateUtc.getTime())) {
       return res.status(400).json({ error: 'Data inválida.' });
     }
 
-    const now = new Date();
+    const [datePart, timePart] = String(date).split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.slice(0, 5).split(':').map(Number);
 
-    if (hourStart.getTime() <= now.getTime()) {
-      return res
-        .status(400)
-        .json({ error: 'Datas passadas não são permitidas.' });
+    const requestedLocal = new Date(year, month - 1, day, hour, minute, 0, 0);
+    const nowLocal = getManausNow();
+
+    const nowManausComparable = new Date(
+      nowLocal.getUTCFullYear(),
+      nowLocal.getUTCMonth(),
+      nowLocal.getUTCDate(),
+      nowLocal.getUTCHours(),
+      nowLocal.getUTCMinutes(),
+      0,
+      0
+    );
+
+    if (requestedLocal.getTime() <= nowManausComparable.getTime()) {
+      return res.status(400).json({ error: 'Datas passadas não são permitidas.' });
     }
 
     const appointmentExists = await Appointment.findOne({
       where: {
         provider_id,
-        date: hourStart,
+        date: appointmentDateUtc,
         canceled_at: null,
         finished_at: null,
       },
@@ -76,7 +95,7 @@ class AppointmentController {
       user_id: req.userId,
       provider_id,
       service_id,
-      date: hourStart,
+      date: appointmentDateUtc,
       notes,
     });
 
@@ -103,7 +122,7 @@ class AppointmentController {
       });
 
       const filteredByDate = appointments.filter((appointment) => {
-        return formatLocalDate(appointment.date) === date;
+        return formatManausDate(appointment.date) === date;
       });
 
       return res.json(filteredByDate);
@@ -136,9 +155,7 @@ class AppointmentController {
     const user = await User.findByPk(req.userId);
 
     if (!user.admin) {
-      return res
-        .status(401)
-        .json({ error: 'Apenas barbeiros concluem serviços.' });
+      return res.status(401).json({ error: 'Apenas barbeiros concluem serviços.' });
     }
 
     if (appointment.canceled_at) {
@@ -157,9 +174,7 @@ class AppointmentController {
     const user = await User.findByPk(req.userId);
 
     if (!appointment) {
-      return res
-        .status(404)
-        .json({ error: 'Agendamento não encontrado.' });
+      return res.status(404).json({ error: 'Agendamento não encontrado.' });
     }
 
     if (appointment.user_id !== req.userId && !user.admin) {
@@ -168,9 +183,7 @@ class AppointmentController {
 
     if (appointment.canceled_at !== null || appointment.finished_at !== null) {
       await appointment.destroy();
-      return res.json({
-        message: 'Registro deletado do banco de dados com sucesso.',
-      });
+      return res.json({ message: 'Registro deletado do banco de dados com sucesso.' });
     }
 
     appointment.canceled_at = new Date();
