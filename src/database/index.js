@@ -1,34 +1,40 @@
 import { Sequelize } from "sequelize";
-import databaseconfig from "../config/database.cjs";
+import databaseConfig from "../config/database.cjs";
 import User from "../app/models/User.js";
-import Service from '../app/models/Services.js';
+import Service from "../app/models/Services.js";
 import Appointment from "../app/models/Appointment.js";
 
-const models = [User,Service,Appointment];
+const models = [User, Service, Appointment];
 
 class Database {
   constructor() {
     this.init();
-    this.connectionTest(); // Chamamos o teste de conexão aqui
+    this.connectionTest();
   }
 
   init() {
-    this.connection = new Sequelize(databaseconfig);
-    
+    this.connection = databaseConfig.use_env_variable
+      ? new Sequelize(
+          process.env[databaseConfig.use_env_variable],
+          databaseConfig
+        )
+      : new Sequelize(databaseConfig);
+
     models.map((model) => model.init(this.connection));
 
     models.map(
-      (model) => model.associate && model.associate(this.connection.models)
+      (model) =>
+        model.associate &&
+        model.associate(this.connection.models)
     );
   }
 
-  // Método assíncrono para testar se o banco responde
   async connectionTest() {
     try {
       await this.connection.authenticate();
-      console.log("✅ Conexão com o PostgreSQL estabelecida com sucesso!");
+      console.log("✅ Conexão com PostgreSQL ok");
     } catch (error) {
-      console.error("❌ Erro ao conectar com o banco de dados:", error.message);
+      console.error("❌ Erro banco:", error);
     }
   }
 }
