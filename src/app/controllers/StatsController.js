@@ -1,7 +1,7 @@
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { Op } from 'sequelize';
 import Appointment from '../models/Appointment.js';
-import Service from '../models/services.js';
+import Service from '../models/Services.js';
 
 class StatsController {
   async index(req, res) {
