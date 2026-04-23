@@ -1,7 +1,7 @@
 import * as Yup from 'yup';
 import { isBefore } from 'date-fns';
 import Appointment from '../models/Appointment.js';
-import Service from '../models/services.js';
+import Service from '../models/Services.js';
 import User from '../models/User.js';
 
 function buildLocalDate(dateString) {

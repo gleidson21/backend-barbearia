@@ -1,5 +1,5 @@
 import * as Yup from 'yup';
-import Service from '../models/services.js';
+import Service from '../models/Services.js';
 
 class ServiceController {
   async store(req, res) {

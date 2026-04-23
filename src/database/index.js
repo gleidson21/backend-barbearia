@@ -1,7 +1,7 @@
 import { Sequelize } from "sequelize";
 import databaseconfig from "../config/database.cjs";
 import User from "../app/models/User.js";
-import Service from "../app/models/services.js";
+import Service from '../app/models/Services.js';
 import Appointment from "../app/models/Appointment.js";
 
 const models = [User,Service,Appointment];
